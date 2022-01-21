@@ -2,4 +2,5 @@
 
 Assignment 1: Voronoi Cells
 
-[![Demonstration video](https://img.youtube.com/vi/swTQEgYYUb4/maxresdefault.jpg)](https://youtu.be/swTQEgYYUb4)
+Click to watch:
+[![Demonstration video](https://img.youtube.com/vi/7QDf7RHwNJ4/maxresdefault.jpg)](https://youtu.be/7QDf7RHwNJ4)
