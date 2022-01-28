@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang='en'>
+  
+  <!-- Matt Johannesen - CS 420x - C'22 -->
+
+  <head>
+    <style>body{ margin:0; background:black }</style>
+    <script src='https://cdn.jsdelivr.net/npm/tweakpane@3.0.7/dist/tweakpane.min.js'></script>
+  </head>
+  
+  <body>
+    <canvas id='gl'></canvas>
+  </body>
+
+  <!-- Vertex shader -->
+  <script id='vertex' type='x-shader/x-vertex'>
+    attribute vec2 a_position;
+
+    void main() {
+      gl_Position = vec4( a_position, 0, 1 );
+    }
+  </script>
+
+  <!-- Fragment shader -->
+  <script id='fragment' type='x-shader/x-fragment'>
+    #ifdef GL_ES
+    precision mediump float;
+    #endif
+
+    uniform float uTime;
+    uniform vec2 uResolution;
+    uniform sampler2D uSampler;
+
+    uniform vec2 uMousePos;
+    uniform vec3 uHsv;
+
+
+    // Code heavily based on The Book of Shaders chapter on Cellular Noise:
+    // https://thebookofshaders.com/12/
+
+
+    vec2 random2( vec2 p ) {
+      return fract(sin(vec2(dot(p,vec2(127.1,311.7)),dot(p,vec2(269.5,183.3))))*43758.5453);
+    }
+
+    vec2 getPointInTile( vec2 tileCoords ) {
+      vec2 point;
+      vec2 nMousePos = uMousePos.xy / uResolution.xy;
+      nMousePos.y = 1. - nMousePos.y;
+      if ( floor( nMousePos * 3. ) == tileCoords ) {
+        point = nMousePos * 3. - tileCoords;
+      }
+      else {
+        point = random2( tileCoords );
+        point = 0.5 + 0.5*sin(0.01* uTime + 10.0*point);
+      }
+      return point;
+    }
+
+    float voronoiDistance( vec2 pos ) {
+      vec2 posOfTile = floor( pos );
+      vec2 posInTile = fract( pos );
+
+      vec2 nearestNeighborOffset;
+      vec2 minDiff;
+
+      // First pass: find tile containing closest point to "pos"
+      float result = 8.0;
+      for( int j = -1; j <= 1; j++ ) {
+        for( int i = -1; i <= 1; i++ ) {
+
+          vec2 neighborOffset = vec2( float(i), float(j) );
+          vec2 pointInNeighbor = getPointInTile( posOfTile + neighborOffset );
+          vec2 diff = neighborOffset + pointInNeighbor - posInTile;
+          float sqDistToNeighborPoint = dot( diff, diff );
+
+          if( sqDistToNeighborPoint < result ) {
+            result = sqDistToNeighborPoint;
+            minDiff = diff;
+            nearestNeighborOffset = neighborOffset;
+          }
+        }
+      }
+
+      // Second pass: get distance centered on tile found in first pass...?
+      result = 8.0;
+      for( int j = -2; j <= 2; j++ ) {
+        for( int i = -2; i <= 2; i++ ) {
+
+          vec2 neighborOffset = nearestNeighborOffset + vec2( float(i), float(j) );
+          vec2 pointInNeighbor = getPointInTile( posOfTile + neighborOffset );
+          vec2 diff = neighborOffset + pointInNeighbor - posInTile;
+
+          // Not sure what all this does
+          vec2 avgDiff = 0.5 * ( minDiff + diff );
+          vec2 normSomething = normalize( diff - minDiff );
+          float dotprod = dot( avgDiff, normSomething );
+
+          result = min( result, dotprod );
+        }
+      }
+
+      return result;
+    }
+
+    float getBorder(vec2 pos, float thickness) {
+      float vDist = voronoiDistance( pos );
+      return (1. - smoothstep(0., thickness, vDist));
+    }
+
+    vec3 hsvToRgb(vec3 hsv) {
+      // HSV follows a cylinder shape (h=angle, s=radius, v=height)
+      // Math taken from other sources - tried my best to rewrite for my understanding
+
+      // h/s/v all have range 0 to 1
+      // h=0. -> red, h=0.333 -> green, h=0.667 -> blue
+
+      vec3 rotated = vec3(1., 0.667, 0.333) + hsv.xxx;    // Rotate pure rgb by hue
+      vec3 wrapped = fract(rotated);                      // Wrap fully rotated r/g/b (e.g. 1.2 -> 0.2)
+      vec3 remapped = wrapped * 6. - vec3(3.);            // Remap rgb to range -3 to 3
+      vec3 folded = abs(remapped);                        // Abs value; remaps to 0 to 3
+      vec3 clamped = clamp(folded - vec3(1.), 0.0, 1.0);  // Clip off least influential axes (i.e. if wrapped rgb was .33 to .66)
+      return hsv.z * mix(vec3(1.), clamped, hsv.y);       // Apply value and saturation
+    }
+
+    void main() {
+      // Get normalized position (pixels -> 0-1)
+      vec2 pos = gl_FragCoord.xy / uResolution.xy;
+      pos.x *= uResolution.x/uResolution.y;
+
+      vec2 nMousePos = uMousePos.xy / uResolution.xy;
+      nMousePos.y = 1. - nMousePos.y;
+      
+      float borders = step(0.6, getBorder(pos * 3., 0.05));
+      float cells = 1. - step(0.6, borders);
+
+      float minlen = 8.;
+      vec2 minDiff = vec2(0.);
+      vec2 posOfTile = floor( pos * 3. );
+      vec2 posInTile = fract( pos * 3. );
+
+      for( int j = -1; j <= 1; j++ ) {
+        for( int i = -1; i <= 1; i++ ) {
+
+          vec2 neighborOffset = vec2( float(i), float(j) );
+          vec2 pointInNeighbor = getPointInTile( posOfTile + neighborOffset );
+          vec2 pointPos = neighborOffset + pointInNeighbor;
+          vec2 diff = pointPos - posInTile;
+          float len = length(diff);
+          if (len < minlen) {
+            minlen = len;
+            minDiff = normalize(diff);
+          }
+        }
+      }
+
+      float cellGradients = 1. - minlen;
+      float invCellGradients = minlen;
+      float points = 1. - step(.01, minlen);
+
+      vec2 cellBorderDistortion = -minDiff * invCellGradients * getBorder(pos * 3., 0.3);
+      cellBorderDistortion *= 0.3;
+
+      vec2 mouseOffset = (nMousePos * 2. - vec2(1.)) * 0.3;
+
+      vec3 cellColor = hsvToRgb(uHsv);
+      vec3 borderColor = hsvToRgb(uHsv + vec3(0.3, 0., 0.));
+
+      // Get color from video texture
+      vec3 texColor = texture2D( uSampler, pos + cellBorderDistortion + mouseOffset ).rgb;
+
+      gl_FragColor = vec4( borders * borderColor + cells * cellColor * 0.3 + texColor, 1. );
+    }
+  </script>
+
+  <script src='main.js'></script>
+
+</html>
