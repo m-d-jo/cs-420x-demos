@@ -14,4 +14,4 @@
 
 - Hosted copy: [Glitch page](https://a-2-webgl-intro.glitch.me/)
 - [Project files](https://github.com/m-d-jo/cs-420x-demos/tree/main/assignment2/project-files)
-- [Explanation](https://github.com/m-d-jo/cs-420x-demos/blob/main/assignment2/assignment2-prompts.md)
+- [Explanation](https://github.com/m-d-jo/cs-420x-demos/blob/main/assignment2/assignment2-prompts.md) + [Feedback](https://github.com/m-d-jo/cs-420x-demos/blob/main/assignment2/assignment2-feedback.md)
