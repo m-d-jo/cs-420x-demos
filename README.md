@@ -18,7 +18,7 @@
 
 ## Assignment 3: Reaction Diffusion ##
 
-- [Try it out](https://m-d-jo-a3-rd.netlify.app/)
+- [Try it out](https://m-d-jo-a3-rd.netlify.app/) (may take a while to load)
 - [Project files](https://github.com/m-d-jo/cs-420x-demos/tree/main/assignment3/project-files)
 - [Explanation](https://github.com/m-d-jo/cs-420x-demos/blob/main/assignment3/assignment3-prompts.md) + [Feedback](https://github.com/m-d-jo/cs-420x-demos/blob/main/assignment3/assignment3-feedback.md)
 
