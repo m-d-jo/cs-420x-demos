@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang='en'>
+  <head>
+    <style>body{ margin:0; background:black; }</style>
+    <script src='https://cdn.jsdelivr.net/npm/tweakpane@3.0.7/dist/tweakpane.min.js'></script>
+  </head>
+  <body>
+    <canvas id='gl'></canvas>
+  </body>
+  <!-- vertex shader, as simple as possible -->
+  <script id='vertex' type='x-shader/x-vertex'>
+    attribute vec2 a_position;
+
+    void main() {
+      gl_Position = vec4( a_position, 0, 1 );
+    }
+  </script>
+  
+  <!-- Reaction diffusion simulation fragment shader -->
+  <script id='simulation' type='x-shader/x-fragment'>
+    #ifdef GL_ES
+    precision mediump float;
+    #endif
+    
+    uniform float time;
+    uniform vec2 resolution;
+
+    uniform float feed;
+    uniform float kill;
+    uniform float aDiffusion;
+    uniform float bDiffusion;
+
+    uniform vec2 mousePos;
+    
+    // Simulation texture state, swapped each frame
+    uniform sampler2D state;
+    
+    // Look up individual cell values 
+    vec2 get(int x, int y) {
+      return texture2D( state, ( gl_FragCoord.xy + vec2(x, y) ) / resolution ).rg;
+    }
+    
+    float getChange() {
+      return texture2D( state, gl_FragCoord.xy / resolution ).b;
+    }
+
+    vec2 laplace() {
+      vec2 result = get(0, 0) * -1.;
+
+      result += get( 1,  0) * 0.2;
+      result += get(-1,  0) * 0.2;
+      result += get( 0,  1) * 0.2;
+      result += get( 0, -1) * 0.2;
+
+      result += get( 1,  1) * 0.05;
+      result += get(-1,  1) * 0.05;
+      result += get( 1, -1) * 0.05;
+      result += get(-1, -1) * 0.05;
+
+      return result;
+    }
+
+
+    void main() {
+      
+      vec2 prevVal = get(0, 0);
+
+      vec2 lap = laplace();
+
+      float ABsq = prevVal.r * prevVal.g * prevVal.g;
+      
+      vec2 mouseOffset = mousePos - gl_FragCoord.xy;
+      float mouseDist = sqrt(pow(mouseOffset.x, 2.) + pow(mouseOffset.y, 2.));
+
+      float mult = 1.;
+ 
+      if (mouseDist < 50.) {
+        mult = min(50. / mouseDist, 5.);
+      }
+
+      vec2 nCoord = gl_FragCoord.xy / resolution;
+      float centerDist = sqrt(pow(nCoord.x - 0.5, 2.) + pow(nCoord.y - 0.5, 2.));
+
+      float aDiff = aDiffusion + 0.2 * abs(nCoord.y * 2. - 1.);
+      float bDiff = bDiffusion + 0.1 * smoothstep(0.5, 0.99, (1. - centerDist));
+
+      vec2 newVal = prevVal;
+      newVal.r += (aDiff * lap.r - ABsq + (feed * (1. - prevVal.r))) * mult;
+      newVal.g += (bDiff * lap.g + ABsq - ((kill + feed) * prevVal.g)) * mult;
+
+      float change = max(step(0.3, abs((prevVal.g - newVal.g))), getChange() - 0.1);
+
+      gl_FragColor = vec4( newVal, change, 1.0 );
+    }
+  </script>
+
+  <!-- render to screen shader -->
+  <script id='render' type='x-shader/x-fragment'>
+    #ifdef GL_ES
+    precision mediump float;
+    #endif
+
+    uniform sampler2D uSampler;
+    uniform vec2 resolution;
+
+    void main() {
+      vec3 simResult = texture2D( uSampler, gl_FragCoord.xy / resolution ).rgb;
+      float bw = (simResult.r - simResult.g) / 2. + 0.5;
+      bw = smoothstep(0.4, 0.6, bw);
+      float magnitude = (simResult.r + simResult.g) / 2.; 
+      gl_FragColor = vec4(max(bw, 0.), bw, magnitude, 1.);
+    }
+  </script>
+
+  <script src='main.js'></script>
+
+</html>
