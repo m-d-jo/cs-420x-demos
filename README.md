@@ -12,7 +12,7 @@
 
 ## Assignment 2: Voronoi Bubbles/Glass ##
 
-- [Try it out](https://a-2-webgl-intro.glitch.me/)
+- [Try it out](https://a-2-webgl-intro.glitch.me/) (Note: this is a video filter, and the page will request access to your webcam)
 - [Project files](https://github.com/m-d-jo/cs-420x-demos/tree/main/assignment2/project-files)
 - [Explanation](https://github.com/m-d-jo/cs-420x-demos/blob/main/assignment2/assignment2-prompts.md) + [Feedback](https://github.com/m-d-jo/cs-420x-demos/blob/main/assignment2/assignment2-feedback.md)
 
