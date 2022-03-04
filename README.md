@@ -33,3 +33,8 @@
 - [Descriptions of presets](https://github.com/m-d-jo/cs-420x-demos/blob/main/assignment4/assignment4-presets.md)
 
 ![Physarum demonstration screenshot](./assignment4/assets/a4-preset-default.png)
+
+## Final: Physarum *Together* ##
+- [Try it out](https://github.com/m-d-jo/cs-420x-demos/tree/main/final/run-instructions.md)
+- [Project files](https://github.com/m-d-jo/cs-420x-demos/tree/main/final/project-files)
+- *Implementation notes and footage coming soon*

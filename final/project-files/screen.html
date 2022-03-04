@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang='en'>
+    <head>
+        <link rel="stylesheet" href="/css/screen.css">
+    </head>
+    <body>
+        <div class="wrapper">
+            <canvas id='gl'></canvas>
+            <div class='info-column'>
+                <h3 id='joincode'>Join code: ...</h1>
+                <hr>
+                <h2>Settings</h2>
+                <div class="display-settings">
+                    <div class="settings-row">
+                        <label for="point-size">Agent Size:</label>
+                        <input type="range" id="point-size" name="point-size" min=1 max=5 step=1 oninput="updatePointSize()" value=2>
+                        <output id="point-size-out">2</output>
+                    </div>
+                    <div class="settings-row">
+                        <label for="bloom-spread">Bloom Spread:</label>
+                        <input type="range" id="bloom-spread" name="bloom-spread" min=1 max=10 step=1 oninput="updateBloomSpread()" value=5>
+                        <output id="bloom-spread-out">5</output>
+                    </div>
+                    <div class="settings-row">
+                        <label for="bloom-intensity">Bloom Strength:</label>
+                        <input type="range" id="bloom-intensity" name="bloom-intensity" min=0 max=10 step=1 oninput="updateBloomIntensity()" value=2>
+                        <output id="bloom-intensity-out">2</output>
+                    </div>
+                </div>
+                <hr>
+                <h2>Species</h2>
+                <table id='species-table'>
+                    <tr>
+                        <th>Name</th>
+                        <th>Color</th>
+                        <th>Speed</th>
+                        <th>Sensor Dist.</th>
+                        <th>Sensor Angle</th>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </body>
+    <script src='https://www.airconsole.com/api/airconsole-1.7.0.js'></script>
+
+    <!-- Copy shader (renders to screen) -->
+
+    <!-- Basic vertex shader -->
+    <script id='copyVertex' type='x-shader/x-vertex'>#version 300 es
+        in vec2 a_pos;
+
+        void main() {
+            gl_Position = vec4( a_pos, 0, 1 );
+        }
+    </script>
+
+    <!-- Frag shader with coloring + single pass bloom effect -->
+    <script id='copyFragment' type='x-shader/x-fragment'>#version 300 es
+        #ifdef GL_ES
+        precision mediump float;
+        #endif
+
+        uniform sampler2D uSampler;
+        uniform vec2 resolution;
+
+        uniform int uBloomSpread;
+        uniform int uBloomIntensity;
+
+        out vec4 color;
+
+        vec3 get(int x, int y) {
+            vec3 result = texture( uSampler, ( gl_FragCoord.xy + vec2(x, y) ) / resolution ).rgb;
+            float d = distance( vec2(x, y), vec2(0, 0) );
+            float coeff = 10. / exp( d * .1 );
+            return result * coeff;
+        }
+
+        void main() {
+
+            vec2 pos = gl_FragCoord.xy / resolution;
+            vec4 tex = texture( uSampler, pos );
+
+            // Single-pass "bloom" effect
+            // Inspired by: https://github.com/kiwipxl/GLSL-shaders/blob/master/bloom.glsl
+
+            vec3 sum = vec3(0.);
+            for (int n = 0; n < 9; ++n) {
+                
+                int yOffset = uBloomSpread * (n - 4);
+                vec3 hSum = vec3(0.);
+
+                hSum += get( -4 * uBloomSpread, yOffset);
+                hSum += get( -3 * uBloomSpread, yOffset);
+                hSum += get( -2 * uBloomSpread, yOffset);
+                hSum += get( -uBloomSpread, yOffset);
+                hSum += get(  0, yOffset);
+                hSum += get(  uBloomSpread, yOffset);
+                hSum += get(  2 * uBloomSpread, yOffset);
+                hSum += get(  3 * uBloomSpread, yOffset);
+                hSum += get(  4 * uBloomSpread, yOffset);
+
+                sum += hSum / 9.;
+            }
+
+            color.rgb = tex.rgb + ((sum / 9.) * float(uBloomIntensity));
+            color.a = 1.;
+        }
+    </script>
+
+    <!-- Copy shader (end) -->
+
+
+    <!-- Simulation shader -->
+
+    <!-- Vertex shader handles movement -->
+    <script id='simulationVertex' type='x-shader/x-vertex'>#version 300 es
+        #define PI_4 3.1415926538/4.
+        precision mediump float;
+        
+        // input from our feedback TRANSFORM_FEEDBACK
+        in vec4 a_pos;
+        
+        // x - isActive
+        // y - speed
+        // z - sensorDistance
+        // w - sensorAngle
+        in vec4 a_properties;
+
+        in vec3 a_color;
+
+        uniform vec2 resolution;
+        
+        // our chemical layer
+        uniform sampler2D uSampler;
+
+        uniform float uPointSize;
+        
+        // the output of our feedback transform
+        // xy will store our position
+        // zw wiil store our heading / direction
+        out vec4 o_vpos;
+
+        out float o_isActive;
+        out vec3 o_color;
+        
+        // this function accepts a direction (header) for a
+        // agent and a rotation in radians, returning the
+        // new, rotated direction
+        vec2 rotate(vec2 dir, float angle) {
+            float  s = sin( angle );
+            float  c = cos( angle );
+            mat2   m = mat2( c, -s, s, c );
+            return m * dir;
+        }
+        
+        // pos - position of agent
+        // dir - heading of agent
+        // angle - direction to sense, in radians
+        // distance - distance to sense
+        float readSensor( vec2 pos, vec2 dir, float angle, vec2 distance ) {
+    
+            vec2 newangle  = rotate( dir, angle );
+            vec2 offset = newangle * distance;
+        
+            return texture( uSampler, pos + offset ).r;
+        } 
+        
+        void main() {
+
+            o_isActive = a_properties.x;
+            o_color = a_color;
+
+            // get normalized height / width of a single pixel 
+            vec2 pixel = 1. / resolution;
+            
+            // how far ahead should sensing occur? this is fun to play with
+            vec2 sensorDistance = pixel * a_properties.z;
+            
+            // normalize our {-1,1} vertex coordinates to {0,1} for texture lookups
+            vec2 pos = (1. + a_pos.xy) / 2.;
+        
+            float sensorHalfAngle = a_properties.w / 2.;
+        
+            // read sensor information at different angles
+            float left    = readSensor( pos, a_pos.zw, -sensorHalfAngle, sensorDistance );
+            float forward = readSensor( pos, a_pos.zw, 0.,               sensorDistance );
+            float right   = readSensor( pos, a_pos.zw, sensorHalfAngle,  sensorDistance );
+            
+            // initialize feedback transform output
+            o_vpos = a_pos;
+        
+            // change direction if left or right sensor is higher than forward
+            if( left > forward && left > right ) {
+        
+                // rotate left and store in .zw
+                o_vpos.zw = rotate( o_vpos.zw, -sensorHalfAngle );
+            
+            } else if( right > left && right > forward ) {  
+                
+                o_vpos.zw = rotate( o_vpos.zw, sensorHalfAngle );
+            
+            } else if ( right == left ) {
+                
+                // randomly pick a direction
+                float rand = fract(sin(a_pos.x)*100000.0);
+                float angleSign = (rand > 0.5) ? 1. : -1.;
+                o_vpos.zw = rotate( o_vpos.zw, angleSign * sensorHalfAngle );
+            }
+            
+            // move our agent in our new direction by one pixel
+            o_vpos.xy += o_vpos.zw * pixel * a_properties.y * o_isActive;
+            
+            // wrap around (I think)
+            o_vpos.xy -= floor(abs(o_vpos.xy)) * sign(o_vpos.xy);
+
+            gl_PointSize = uPointSize;
+            
+            // position is for fragment shader rendering, don't need to include heading
+            gl_Position = vec4( a_pos.x, a_pos.y, 0., 1. );
+        }
+    </script>
+    
+
+    <!-- Basic fragment shader stores position (+ other data) -->
+    <script id='simulationFragment' type='x-shader/x-fragment'>#version 300 es
+        precision mediump float;
+        
+        uniform vec2 resolution;
+    
+        in vec4 o_vpos;
+        in float o_isActive;
+        in vec3 o_color;
+        
+        out vec4 o_frag;
+        
+        void main() {
+            o_frag = vec4( o_color, 0.2 * o_isActive );
+        } 
+    </script>
+    
+    <!-- Simulation shader (end) -->
+
+
+    <!-- Decay/diffuse shader (blurs out texture differences) -->
+
+    <!-- Fragment shader handles simple blur -->
+    <script id='ddFragment' type='x-shader/x-fragment'>#version 300 es
+        #ifdef GL_ES
+        precision mediump float;
+        #endif  
+        
+        uniform sampler2D uSampler;
+        uniform vec2 resolution;
+        
+        vec3 get(int x, int y) {
+            return texture( uSampler, ( gl_FragCoord.xy + vec2(x, y) ) / resolution ).rgb;
+        }
+        
+        out vec4 color;
+        void main() {
+            vec3 sum = get(0,0) - 1.;
+            
+            sum += get( 1,  0) * .2;
+            sum += get(-1,  0) * .2;
+            sum += get( 0,  1) * .2;
+            sum += get( 0, -1) * .2;
+        
+            sum += get( 1,  1) * .05;
+            sum += get( 1, -1) * .05;       
+            sum += get(-1,  1) * .05;
+            sum += get(-1, -1) * .05;
+            
+            vec2 pos = gl_FragCoord.xy / resolution;
+            color = vec4( sum * .9, .25);
+        }
+    </script>
+    <!-- Decay/diffuse shader (end) -->
+
+    <script src='js/common.js'></script>
+    <script src='js/screen.js'></script>
+</html>

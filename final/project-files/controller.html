@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang='en'>
+    <head>
+        <link rel="stylesheet" href="/css/controller.css">
+    </head>
+    <script src='https://www.airconsole.com/api/airconsole-1.7.0.js'></script>
+    <body>
+        <div class='wrapper'>
+            <h2>Species Settings</h2>
+            <hr>
+            <div class = 'form-row'>
+                <label for="species-name">Name:</label>
+                <input type="text" id="species-name" name="species-name" maxlength="12" value="New Species">
+            </div>
+            <div class = 'form-row'>
+                <label for="species-speed">Speed:</label>
+                <input type="range" id="species-speed" name="species-speed" min="1" max="10" step="1" oninput="updateOutput('species-speed')">
+                <output id="species-speed-out">4</output>
+            </div>
+            <div class = 'form-row'>
+                <label for="species-color">Color:</label>
+                <input type="color" id="species-color" name="species-color" style="padding: 1px;" value="#FFFFFF">
+            </div>
+            <div class = 'form-row'>
+                <label for="species-sensor-angle">Sensor Angle:</label>
+                <select id="species-sensor-angle" name="species-sensor-angle">
+                    <option value="PI">PI</option>
+                    <option value="PI/2" selected>PI/2</option>
+                    <option value="PI/3">PI/3</option>
+                    <option value="PI/4">PI/4</option>
+                    <option value="PI/6">PI/6</option>
+                </select>
+            </div>
+            <div class = 'form-row'>
+                <label for="species-sensor-distance">Sensor Distance:</label>
+                <input type="range" id="species-sensor-distance" name="species-sensor-distance" min="1" max="30" step="1" oninput="updateOutput('species-sensor-distance')">
+                <output id="species-sensor-distance-out">4</output>
+            </div>
+            <hr>
+        </div>
+    </body>
+    <script src='js/common.js'></script>
+    <script src='js/controller.js'></script>
+</html>
