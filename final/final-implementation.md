@@ -30,4 +30,4 @@ Examples of different bloom settings:
 
 Click to watch:
 
-[![Multi-user physarum demonstration video(https://img.youtube.com/vi/78ts61Z2MoWc/maxresdefault.jpg)](https://youtu.be/8ts61Z2MoWc)
+[![Multi-user physarum demonstration video](https://img.youtube.com/vi/78ts61Z2MoWc/maxresdefault.jpg)](https://youtu.be/8ts61Z2MoWc)
