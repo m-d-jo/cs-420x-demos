@@ -40,4 +40,4 @@
 - [Implementation notes](https://github.com/m-d-jo/cs-420x-demos/tree/main/final/final-implementation.md)
 - Click to watch demo:
 
-[![Multi-user physarum demonstration video(https://img.youtube.com/vi/78ts61Z2MoWc/maxresdefault.jpg)](https://youtu.be/8ts61Z2MoWc)
+[![Multi-user physarum demonstration video](https://img.youtube.com/vi/78ts61Z2MoWc/maxresdefault.jpg)](https://youtu.be/8ts61Z2MoWc)
