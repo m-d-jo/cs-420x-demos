@@ -2,6 +2,7 @@
 
 ## Demo ##
 [Try it yourself](https://github.com/m-d-jo/cs-420x-demos/tree/main/final/run-instructions.md)
+
 [Watch demo](https://youtu.be/8ts61Z2MoWc)
 
 ## Implementation notes ##
